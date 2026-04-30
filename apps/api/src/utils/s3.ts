@@ -1,4 +1,9 @@
-import { GetObjectCommand, ListObjectsCommand, S3 } from "@aws-sdk/client-s3";
+import {
+  GetObjectCommand,
+  ListObjectsCommand,
+  PutObjectCommand,
+  S3,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../env";
 
@@ -99,4 +104,27 @@ export async function getStorageFilePayload(path: string) {
     throw new Error("Missing body");
   }
   return await command.Body.transformToString("utf-8");
+}
+
+export async function putStorageFile(
+  path: string,
+  body: Buffer | Blob | Uint8Array,
+) {
+  const trimPath = path.substring(1);
+  await client.putObject({
+    Bucket: env.S3_BUCKET,
+    Key: trimPath,
+    Body: body,
+  });
+}
+
+export async function getStorageUploadUrl(path: string) {
+  const trimPath = path.substring(1);
+  const command = new PutObjectCommand({
+    Bucket: env.S3_BUCKET,
+    Key: trimPath,
+  });
+  return await getSignedUrl(client, command, {
+    expiresIn: 3600, // 1 hour for large uploads
+  });
 }

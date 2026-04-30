@@ -10,9 +10,16 @@
     <div id="root"></div>
     <script>
       window.__ENV__ = {
-        PUBLIC_API_ENDPOINT: "<!--#echo var="SSI_API_ENDPOINT"-->",
-        PUBLIC_STITCHER_ENDPOINT: "<!--#echo var="SSI_STITCHER_ENDPOINT"-->",
+        PUBLIC_API_ENDPOINT: '<!--#echo var="SSI_API_ENDPOINT"-->',
+        PUBLIC_STITCHER_ENDPOINT: '<!--#echo var="SSI_STITCHER_ENDPOINT"-->',
+        PUBLIC_S3_ENDPOINT: '<!--#echo var="SSI_S3_ENDPOINT"-->',
       };
+      // Clean up placeholders if they weren't replaced
+      for (const key in window.__ENV__) {
+        if (window.__ENV__[key].includes('<!--#echo')) {
+          window.__ENV__[key] = undefined;
+        }
+      }
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

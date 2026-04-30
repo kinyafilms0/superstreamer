@@ -34,6 +34,7 @@ export async function s3UploadFile(
   remotePath: string,
   options: {
     public: boolean;
+    onProgress?: (progress: number) => void;
   },
 ) {
   const upload = new Upload({
@@ -43,9 +44,19 @@ export async function s3UploadFile(
       ContentType: lookup(localPath) || "binary/octet-stream",
       Bucket: env.S3_BUCKET,
       Key: remotePath,
-      ACL: options.public ? "public-read" : "private",
     },
   });
+
+  if (options.onProgress) {
+    upload.on("httpUploadProgress", (progress) => {
+      if (progress.loaded && progress.total) {
+        options.onProgress?.(
+          Math.round((progress.loaded / progress.total) * 100),
+        );
+      }
+    });
+  }
+
   await upload.done();
 }
 
@@ -110,6 +121,7 @@ export async function s3UploadFolder(
   options: {
     public: boolean;
     concurrency: number;
+    onProgress?: (progress: number) => void;
   },
 ) {
   await s3DeleteFolder(remotePath);
@@ -121,10 +133,24 @@ export async function s3UploadFolder(
     files.push(file);
   }
 
-  for (const file of files) {
-    await s3UploadFile(`${localPath}/${file}`, `${remotePath}/${file}`, {
-      public: options.public,
-    });
+  let uploaded = 0;
+  const concurrency = options.concurrency ?? 10;
+  const chunks = [];
+
+  for (let i = 0; i < files.length; i += concurrency) {
+    chunks.push(files.slice(i, i + concurrency));
+  }
+
+  for (const chunk of chunks) {
+    await Promise.all(
+      chunk.map(async (file) => {
+        await s3UploadFile(`${localPath}/${file}`, `${remotePath}/${file}`, {
+          public: options.public,
+        });
+        uploaded++;
+        options.onProgress?.(Math.round((uploaded / files.length) * 100));
+      }),
+    );
   }
 }
 
@@ -161,12 +187,22 @@ async function s3DeleteFolder(remotePath: string) {
     }
   }
 
-  for (const filePath of filePaths) {
-    const command = new DeleteObjectCommand({
-      Bucket: env.S3_BUCKET,
-      Key: filePath,
-    });
-    await client.send(command);
+  const concurrency = 20;
+  const chunks = [];
+  for (let i = 0; i < filePaths.length; i += concurrency) {
+    chunks.push(filePaths.slice(i, i + concurrency));
+  }
+
+  for (const chunk of chunks) {
+    await Promise.all(
+      chunk.map(async (filePath) => {
+        const command = new DeleteObjectCommand({
+          Bucket: env.S3_BUCKET,
+          Key: filePath,
+        });
+        await client.send(command);
+      }),
+    );
   }
 }
 

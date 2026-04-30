@@ -58,7 +58,12 @@ export const ffmpegCallback: WorkerCallback<FfmpegData, FfmpegResult> = async ({
   await s3UploadFile(
     `${outDir}/${name}`,
     `transcode/${job.data.assetId}/${name}`,
-    { public: false },
+    {
+      public: false,
+      onProgress: (value) => {
+        progressTracker.set("upload", value);
+      },
+    },
   );
 
   return {
@@ -72,6 +77,10 @@ function getVideoOutputOptions(
   segmentSize: number,
 ) {
   const keyFrameRate = segmentSize * stream.framerate;
+
+  if (stream.codec === ("copy" as any)) {
+    return ["-c:v copy", "-map 0:v:0"];
+  }
 
   const args: string[] = [
     "-f mp4",
@@ -94,8 +103,9 @@ function getVideoOutputOptions(
   }
 
   if (stream.codec === "h264" || stream.codec === "hevc") {
+    const preset = stream.height === -1 ? "ultrafast" : "slow";
     args.push(
-      "-preset slow",
+      `-preset ${preset}`,
       "-flags +loop",
       "-pix_fmt yuv420p",
       "-flags +cgop",
@@ -115,6 +125,10 @@ function getAudioOutputOptions(
   stream: Extract<Stream, { type: "audio" }>,
   segmentSize: number,
 ) {
+  if (stream.codec === ("copy" as any)) {
+    return ["-c:a copy", "-map 0:a:0"];
+  }
+
   const args: string[] = [
     "-f mp4",
     "-vn",

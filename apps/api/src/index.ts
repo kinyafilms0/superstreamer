@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { openAPISpecs } from "hono-openapi";
+import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { ApiError } from "./errors";
 import { assetsApp } from "./routes/assets";
@@ -16,6 +17,15 @@ import "./db/migrate";
 
 const app = new Hono()
   .use(cors())
+  .use(
+    "/storage/upload",
+    bodyLimit({
+      maxSize: 500 * 1024 * 1024, // 500MB
+      onError: (c) => {
+        return c.json({ code: "ERR_FILE_TOO_LARGE" }, 413);
+      },
+    }),
+  )
   .route("/token", tokenApp)
   .route("/user", userApp)
   .route("/storage", storageApp)

@@ -151,6 +151,9 @@ async function handleStepInitial(job: Job<PackageData>, dir: WorkerDir) {
   await s3UploadFolder(outDir, s3Dir, {
     public: job.data.public,
     concurrency: job.data.concurrency,
+    onProgress: (value) => {
+      progressTracker.set("upload", value);
+    },
   });
 }
 

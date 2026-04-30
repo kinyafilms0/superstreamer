@@ -17,10 +17,13 @@ interface ApiProviderProps {
 export function ApiProvider({ children }: ApiProviderProps) {
   const { token } = useAuth();
 
-  const api = useMemo(
-    () => createClient(window.__ENV__.PUBLIC_API_ENDPOINT, token),
-    [token],
-  );
+  const api = useMemo(() => {
+    const endpoint =
+      window.__ENV__?.PUBLIC_API_ENDPOINT ??
+      import.meta.env.VITE_PUBLIC_API_ENDPOINT ??
+      "http://localhost:3000";
+    return createClient(endpoint, token);
+  }, [token]);
 
   return <ApiContext.Provider value={{ api }}>{children}</ApiContext.Provider>;
 }

@@ -195,15 +195,19 @@ export function mergeStream(
   input: Input,
 ): Stream | null {
   if (partial.type === "video" && input.type === "video") {
+    const height = partial.height === -1 ? input.height : partial.height;
     const framerate = partial.framerate ?? input.framerate;
 
     const bitrate =
-      partial.bitrate ?? getDefaultVideoBitrate(partial.height, partial.codec);
+      partial.codec === "copy"
+        ? 0
+        : partial.bitrate ?? getDefaultVideoBitrate(height, partial.codec);
 
     assert(bitrate, defaultReason("video", "bitrate"));
 
     return {
       ...partial,
+      height,
       bitrate,
       framerate,
     };
@@ -213,7 +217,9 @@ export function mergeStream(
     const channels = partial.channels ?? input.channels;
 
     const bitrate =
-      partial.bitrate ?? getDefaultAudioBitrate(channels, partial.codec);
+      partial.codec === "copy"
+        ? 0
+        : partial.bitrate ?? getDefaultAudioBitrate(channels, partial.codec);
 
     const language = partial.language ?? input.language;
 

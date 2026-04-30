@@ -58,14 +58,16 @@ services:
       - superstreamer_redis_data:/data
 
   superstreamer-postgres:
-    image: "postgres:latest"
+    image: "postgres:16-alpine"
     restart: always
     stop_signal: SIGINT
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - superstreamer_postgres_data:/var/lib/postgresql/data
     environment:
       - POSTGRES_INITDB_ARGS=--data-checksums
       - POSTGRES_DB=sprs
+      - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=sprs
+      - POSTGRES_HOST_AUTH_METHOD=trust

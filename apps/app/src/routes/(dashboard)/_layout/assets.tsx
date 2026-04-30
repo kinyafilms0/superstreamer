@@ -8,7 +8,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { zodSearchValidator } from "@tanstack/router-zod-adapter";
-import { CircleSlash, SquarePen } from "lucide-react";
+import { CircleSlash, Copy, SquarePen } from "lucide-react";
 import { useState } from "react";
 import { z } from "zod";
 import { useApi } from "../../../api";
@@ -77,6 +77,10 @@ function RouteComponent() {
             allowsSorting: true,
           },
           {
+            id: "playback",
+            label: "HLS URL",
+          },
+          {
             id: "actions",
             label: "Actions",
           },
@@ -94,7 +98,8 @@ function RouteComponent() {
             <Playables key="2" asset={item} />,
             <GroupTag key="3" groups={groups} asset={item} />,
             <Format key="4" format="date" value={item.createdAt} />,
-            <div key="5" className="flex items-center">
+            <PlaybackLink key="5" asset={item} />,
+            <div key="6" className="flex items-center">
               <button type="button" onClick={() => setEditAsset(item)}>
                 <SquarePen className="w-4 h-4" />
               </button>
@@ -134,6 +139,37 @@ function Playables({ asset }: { asset: Asset }) {
       ) : (
         <CircleSlash className="w-4 h-4" />
       )}
+    </div>
+  );
+}
+
+function PlaybackLink({ asset }: { asset: Asset }) {
+  if (!asset.playables) return null;
+
+  const endpoint = (
+    window.__ENV__?.PUBLIC_S3_ENDPOINT ??
+    import.meta.env.VITE_PUBLIC_S3_ENDPOINT ??
+    "https://pub-1f40055d0d024e10aab8d8d5fedf23bc.r2.dev"
+  ).replace(/\/$/, "");
+  const hlsUrl = `${endpoint}/package/${asset.id}/hls/master.m3u8`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(hlsUrl);
+    alert("HLS URL copied to clipboard!");
+  };
+
+  return (
+    <div className="flex items-center gap-2 max-w-[200px]">
+      <div className="text-[10px] truncate opacity-50 bg-default-100 p-1 rounded">
+        {hlsUrl}
+      </div>
+      <button
+        type="button"
+        onClick={copy}
+        className="p-1 hover:bg-default-200 rounded transition-colors"
+      >
+        <Copy className="w-3 h-3" />
+      </button>
     </div>
   );
 }

@@ -12,6 +12,8 @@ import {
   getStorageFilePayload,
   getStorageFileUrl,
   getStorageFolder,
+  getStorageUploadUrl,
+  putStorageFile,
 } from "../utils/s3";
 
 export const storageApp = new Hono()
@@ -119,5 +121,59 @@ export const storageApp = new Hono()
         default:
           throw apiError("ERR_STORAGE_NO_FILE_PREVIEW");
       }
+    },
+  )
+ 
+  /**
+   * Upload a file to S3.
+   */
+  .post(
+    "/upload",
+    describeRoute({
+      summary: "Upload a file",
+      description: "Upload a file directly to your S3 storage.",
+      security: [{ userToken: [] }],
+      tags: ["Storage"],
+    }),
+    async (c) => {
+      const body = await c.req.formData();
+      const file = body.get("file");
+
+      if (!(file instanceof File)) {
+        throw apiError("ERR_STORAGE_INVALID_FILE");
+      }
+
+      const path = `/uploads/${Date.now()}-${file.name}`;
+      const buffer = await file.arrayBuffer();
+
+      await putStorageFile(path, new Uint8Array(buffer));
+
+      return c.json({ path }, 200);
+    },
+  )
+
+  /**
+   * Get a pre-signed URL for direct upload to S3.
+   */
+  .get(
+    "/upload-url",
+    describeRoute({
+      summary: "Get an upload URL",
+      description: "Get a pre-signed URL for direct upload to your S3 storage.",
+      security: [{ userToken: [] }],
+      tags: ["Storage"],
+    }),
+    validator(
+      "query",
+      z.object({
+        name: z.string(),
+      }),
+    ),
+    async (c) => {
+      const { name } = c.req.valid("query");
+      const path = `/uploads/${Date.now()}-${name}`;
+      const url = await getStorageUploadUrl(path);
+
+      return c.json({ url, path }, 200);
     },
   );
